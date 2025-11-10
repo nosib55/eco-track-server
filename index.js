@@ -89,7 +89,8 @@ async function run() {
       res.send(result);
     });
 
-    
+   app.get("/api/events", async (req, res) => {
+      const now = new Date();
 
      
 
