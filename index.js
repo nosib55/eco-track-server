@@ -32,13 +32,13 @@ async function run() {
     const tipsCollection = db.collection("tips");
 
     //  GET all challenges
-    app.get('/challenges', async (req, res) => {
+    app.get('/api/challenges', async (req, res) => {
       const result = await challengesCollection.find().toArray();
       res.send(result);
     });
 
     //  GET single challenge by ID
-    app.get('/challenges/:id', async (req, res) => {
+    app.get('/api/challenges/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await challengesCollection.findOne(query);
@@ -46,14 +46,14 @@ async function run() {
     });
 
     // POST new challenge
-    app.post('/challenges', async (req, res) => {
+    app.post('/api/challenges', async (req, res) => {
       const newChallenge = req.body;
       const result = await challengesCollection.insertOne(newChallenge);
       res.send(result);
     });
 
     // PATCH (update) challenge by ID
-    app.patch('/challenges/:id', async (req, res) => {
+    app.patch('/api/challenges/:id', async (req, res) => {
       try {
         const id = req.params.id;
         const updatedData = req.body;
@@ -71,7 +71,7 @@ async function run() {
     });
 
     //  DELETE challenge
-    app.delete('/challenges/:id', async (req, res) => {
+    app.delete('/api/challenges/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await challengesCollection.deleteOne(query);
@@ -79,18 +79,28 @@ async function run() {
     });
 
     // Get all tips 
-     app.get("/tips", async (req, res) => { const result = await tipsCollection.find().sort({ createdAt: -1 }).toArray(); res.send(result); });
+     app.get("/api/tips", async (req, res) => { const result = await tipsCollection.find().sort({ createdAt: -1 }).toArray(); res.send(result); });
 
 
-     app.get("/tips/:id", async (req, res) => {
+     app.get("/api/tips/:id", async (req, res) => {
       const id = req.params.id;
       const result = await tipsCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
 
-      app.post("/tips", async (req, res) => {
+      app.post("/api/tips", async (req, res) => {
       const newTip = { ...req.body, createdAt: new Date(), upvotes: 0 };
       const result = await tipsCollection.insertOne(newTip);
+      res.send(result);
+    });
+
+
+    app.patch("/api/tips/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await tipsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $inc: { upvotes: 1 } }
+      );
       res.send(result);
     });
 
