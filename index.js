@@ -78,6 +78,23 @@ async function run() {
       res.send(result);
     });
 
+    // Get all tips 
+     app.get("/tips", async (req, res) => { const result = await tipsCollection.find().sort({ createdAt: -1 }).toArray(); res.send(result); });
+
+
+     app.get("/tips/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await tipsCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+      app.post("/tips", async (req, res) => {
+      const newTip = { ...req.body, createdAt: new Date(), upvotes: 0 };
+      const result = await tipsCollection.insertOne(newTip);
+      res.send(result);
+    });
+
+
     await client.db("admin").command({ ping: 1 });
     console.log("✅ Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
