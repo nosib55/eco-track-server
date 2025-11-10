@@ -91,6 +91,11 @@ async function run() {
 
    app.get("/api/events", async (req, res) => {
       const now = new Date();
+      const result = await eventsCollection
+        .find({ date: { $gte: now } })
+        .sort({ date: 1 }).toArray();
+      res.send(result);
+    });
 
      
 
