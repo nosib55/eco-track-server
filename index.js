@@ -30,6 +30,7 @@ async function run() {
 // Collections
     const challengesCollection = db.collection('challenges');
     const tipsCollection = db.collection("tips");
+     const eventsCollection = db.collection("events");
 
     //  GET all challenges
     app.get('/api/challenges', async (req, res) => {
@@ -88,22 +89,9 @@ async function run() {
       res.send(result);
     });
 
-      app.post("/api/tips", async (req, res) => {
-      const newTip = { ...req.body, createdAt: new Date(), upvotes: 0 };
-      const result = await tipsCollection.insertOne(newTip);
-      res.send(result);
-    });
+    
 
-
-    app.patch("/api/tips/:id", async (req, res) => {
-      const id = req.params.id;
-      const result = await tipsCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $inc: { upvotes: 1 } }
-      );
-      res.send(result);
-    });
-
+     
 
     await client.db("admin").command({ ping: 1 });
     console.log("✅ Pinged your deployment. You successfully connected to MongoDB!");
