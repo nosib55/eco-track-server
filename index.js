@@ -97,6 +97,9 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/api/events/:id", async (req, res) => {
+      const id = req.params.id;
+
      
 
     await client.db("admin").command({ ping: 1 });
