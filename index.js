@@ -31,6 +31,7 @@ async function run() {
     const challengesCollection = db.collection('challenges');
     const tipsCollection = db.collection("tips");
      const eventsCollection = db.collection("events");
+     const usersCollection = db.collection("users");
 
     //  GET all challenges
     app.get('/api/challenges', async (req, res) => {
@@ -97,10 +98,14 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/api/events/:id", async (req, res) => {
+     app.get("/api/events/:id", async (req, res) => {
       const id = req.params.id;
+      const result = await eventsCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
      
+    
 
     await client.db("admin").command({ ping: 1 });
     console.log("✅ Pinged your deployment. You successfully connected to MongoDB!");
