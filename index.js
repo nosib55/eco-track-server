@@ -104,8 +104,48 @@ async function run() {
       res.send(result);
     });
 
-     
-    
+    app.post("/api/users", async (req, res) => {
+  const user = req.body;
+
+  // check if user already exists
+  const existingUser = await usersCollection.findOne({ email: user.email });
+  if (existingUser) {
+    return res.send({ message: "User already exists", user: existingUser });
+  }
+
+  const newUser = {
+    ...user,
+    role: "user",
+    ecoPoints: 0,
+    createdAt: new Date(),
+  };
+  const result = await usersCollection.insertOne(newUser);
+  res.send(result);
+});
+
+app.get("/api/users", async (req, res) => {
+  const result = await usersCollection.find().toArray();
+  res.send(result);
+});
+
+// ✅ Get a single user by email
+app.get("/api/users/:email", async (req, res) => {
+  const email = req.params.email;
+  const user = await usersCollection.findOne({ email });
+  res.send(user);
+});
+
+app.patch("/api/users/:email", async (req, res) => {
+  const email = req.params.email;
+  const updatedData = req.body;
+  const result = await usersCollection.updateOne(
+    { email },
+    { $set: updatedData }
+  );
+  res.send(result);
+});
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("✅ Pinged your deployment. You successfully connected to MongoDB!");
