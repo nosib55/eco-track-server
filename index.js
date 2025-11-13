@@ -1,4 +1,4 @@
-// server.js
+// index.js
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -12,6 +12,10 @@ app.use(cors());
 app.use(express.json());
 
 const uri = process.env.MONGODB_URI;
+if (!uri) {
+  console.error('MONGODB_URI not set in .env');
+  process.exit(1);
+}
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -21,9 +25,7 @@ const client = new MongoClient(uri, {
   }
 });
 
-
 function requireAuth(req, res, next) {
-  
   const userEmail = req.header('x-user-email') || null;
   if (!userEmail) {
     return res.status(401).json({ message: 'Unauthorized. Send x-user-email header for now.' });
@@ -46,9 +48,11 @@ async function run() {
     const tipsCollection = db.collection("tips");
     const eventsCollection = db.collection("events");
     const usersCollection = db.collection("users");
-    const userChallengesCollection = db.collection("userChallenges"); 
+    const userChallengesCollection = db.collection("userChallenges");
 
-   
+    /* -------------------------
+       Challenges endpoints
+       ------------------------- */
     app.get('/api/challenges', async (req, res) => {
       try {
         const {
@@ -88,7 +92,6 @@ async function run() {
         const skip = (Number(page) - 1) * Number(limit);
         const sortObj = {};
         if (sort) {
-          
           if (sort.startsWith('-')) sortObj[sort.slice(1)] = -1;
           else sortObj[sort] = 1;
         } else {
@@ -105,7 +108,6 @@ async function run() {
       }
     });
 
-   
     app.get('/api/challenges/:id', async (req, res) => {
       try {
         const id = req.params.id;
@@ -119,17 +121,15 @@ async function run() {
       }
     });
 
-    
     app.post('/api/challenges', requireAuth, async (req, res) => {
       try {
         const body = req.body;
 
-        
         const required = ['title', 'category', 'description', 'duration', 'target', 'imageUrl', 'startDate', 'endDate'];
         for (const f of required) {
           if (!body[f]) return res.status(400).json({ message: `${f} is required` });
         }
-        
+
         if (new Date(body.endDate) <= new Date(body.startDate)) {
           return res.status(400).json({ message: 'endDate must be after startDate' });
         }
@@ -142,7 +142,7 @@ async function run() {
           target: body.target,
           participants: 0,
           impactMetric: body.impactMetric || '',
-          createdBy: req.user.email, // using requireAuth
+          createdBy: req.user.email,
           startDate: new Date(body.startDate),
           endDate: new Date(body.endDate),
           imageUrl: body.imageUrl,
@@ -151,13 +151,12 @@ async function run() {
         };
 
         const result = await challengesCollection.insertOne(newChallenge);
-        res.status(201).json({ success: true, challengeId: result.insertedId, challenge: newChallenge });
+        res.status(201).json({ success: true, challengeId: result.insertedId, challenge: { _id: result.insertedId, ...newChallenge } });
       } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Failed to create challenge', error: err.message });
       }
     });
-
 
     app.patch('/api/challenges/:id', requireAuth, async (req, res) => {
       try {
@@ -181,7 +180,6 @@ async function run() {
       }
     });
 
-  
     app.delete('/api/challenges/:id', requireAuth, async (req, res) => {
       try {
         const id = req.params.id;
@@ -199,7 +197,6 @@ async function run() {
       }
     });
 
-   
     app.post('/api/challenges/join/:id', requireAuth, async (req, res) => {
       try {
         const challengeId = req.params.id;
@@ -218,32 +215,29 @@ async function run() {
           challengeId: new ObjectId(challengeId),
           status: 'Ongoing',
           progress: 0,
-          progressLogs: [], 
+          progressLogs: [],
           joinDate: new Date(),
           lastUpdated: new Date(),
         };
         const insertResult = await userChallengesCollection.insertOne(uc);
 
-       
         await challengesCollection.updateOne(
           { _id: new ObjectId(challengeId) },
           { $inc: { participants: 1 } }
         );
 
-        res.status(201).json({ success: true, userChallengeId: insertResult.insertedId, userChallenge: uc });
+        res.status(201).json({ success: true, userChallengeId: insertResult.insertedId, userChallenge: { _id: insertResult.insertedId, ...uc } });
       } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Failed to join challenge', error: err.message });
       }
     });
 
-    
     app.get('/api/user-challenges/me', requireAuth, async (req, res) => {
       try {
         const userEmail = req.user.email;
         const ucs = await userChallengesCollection.find({ userId: userEmail }).toArray();
 
- 
         const populated = await Promise.all(ucs.map(async uc => {
           const ch = await challengesCollection.findOne({ _id: uc.challengeId });
           return { ...uc, challenge: ch };
@@ -256,7 +250,6 @@ async function run() {
       }
     });
 
-    
     app.patch('/api/user-challenges/:id/progress', requireAuth, async (req, res) => {
       try {
         const id = req.params.id;
@@ -292,7 +285,6 @@ async function run() {
       }
     });
 
-    
     app.delete('/api/user-challenges/:id', requireAuth, async (req, res) => {
       try {
         const id = req.params.id;
@@ -316,7 +308,9 @@ async function run() {
       }
     });
 
-    
+    /* -------------------------
+       Tips endpoints
+       ------------------------- */
     app.get("/api/tips", async (req, res) => {
       try {
         const limit = Number(req.query.limit) || 5;
@@ -339,7 +333,9 @@ async function run() {
       }
     });
 
-    
+    /* -------------------------
+       Events endpoints
+       ------------------------- */
     app.get("/api/events", async (req, res) => {
       try {
         const now = new Date();
@@ -354,6 +350,37 @@ async function run() {
       }
     });
 
+    // PUBLIC POST /api/events
+    app.post("/api/events", async (req, res) => {
+      try {
+        const body = req.body || {};
+
+        // minimal validation
+        const required = ['title', 'description', 'date', 'location', 'organizer', 'maxParticipants'];
+        for (const f of required) {
+          if (!body[f]) return res.status(400).json({ message: `${f} is required` });
+        }
+
+        const newEvent = {
+          title: String(body.title),
+          description: String(body.description),
+          date: new Date(body.date),
+          location: String(body.location),
+          organizer: String(body.organizer),
+          maxParticipants: Number(body.maxParticipants) || 0,
+          currentParticipants: Number(body.currentParticipants) || 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        const result = await eventsCollection.insertOne(newEvent);
+        res.status(201).json({ success: true, eventId: result.insertedId, event: { _id: result.insertedId, ...newEvent } });
+      } catch (err) {
+        console.error("POST /api/events error:", err);
+        res.status(500).json({ message: "Failed to create event", error: err.message });
+      }
+    });
+
     app.get("/api/events/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -365,7 +392,9 @@ async function run() {
       }
     });
 
-    
+    /* -------------------------
+       Users endpoints
+       ------------------------- */
     app.post("/api/users", async (req, res) => {
       try {
         const user = req.body;
@@ -420,13 +449,14 @@ async function run() {
       }
     });
 
-   
+    /* -------------------------
+       Stats endpoint
+       ------------------------- */
     app.get('/api/stats', async (req, res) => {
       try {
         // active participants
         const activeParticipants = await userChallengesCollection.distinct('userId', { status: 'Ongoing' });
 
-        
         const pipeline = [
           { $unwind: { path: '$progressLogs', preserveNullAndEmptyArrays: false } },
           { $group: { _id: null, totalValue: { $sum: '$progressLogs.value' } } }
@@ -434,10 +464,9 @@ async function run() {
         const agg = await userChallengesCollection.aggregate(pipeline).toArray();
         const totalValue = agg[0]?.totalValue || 0;
 
-       
         res.json({
-          totalCO2Saved: 0, 
-          totalPlasticReducedKg: totalValue, 
+          totalCO2Saved: 0,
+          totalPlasticReducedKg: totalValue,
           activeParticipants: activeParticipants.length,
         });
       } catch (err) {
